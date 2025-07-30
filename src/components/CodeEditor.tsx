@@ -33,9 +33,11 @@ interface Language {
 
 interface CodeEditorProps {
   onRunCode: (code: string) => void;
+  initialCode?: string;
+  onCodeChange?: (code: string) => void;
 }
 
-export const CodeEditor = ({ onRunCode }: CodeEditorProps) => {
+export const CodeEditor = ({ onRunCode, initialCode, onCodeChange }: CodeEditorProps) => {
   const languages: Language[] = [
     {
       id: 'javascript',
@@ -145,11 +147,23 @@ console.log(\`5 + 3 = \${addNumbers(5, 3)}\`);`
   ];
 
   const [selectedLanguage, setSelectedLanguage] = useState<Language>(languages[0]);
-  const [code, setCode] = useState(languages[0].template);
+  const [code, setCode] = useState(initialCode || languages[0].template);
   const [fontSize, setFontSize] = useState(14);
   const [activeTab, setActiveTab] = useState(`main.${languages[0].extension}`);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const lineNumbersRef = useRef<HTMLDivElement>(null);
+
+  // Update code when initialCode changes
+  useEffect(() => {
+    if (initialCode !== undefined && initialCode !== code) {
+      setCode(initialCode);
+    }
+  }, [initialCode]);
+
+  // Call onCodeChange when code changes
+  useEffect(() => {
+    onCodeChange?.(code);
+  }, [code, onCodeChange]);
 
   const handleLanguageChange = (language: Language) => {
     setSelectedLanguage(language);

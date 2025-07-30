@@ -2,10 +2,13 @@ import { useState } from "react";
 import { CodeEditor } from "@/components/CodeEditor";
 import { OutputPanel } from "@/components/OutputPanel";
 import { AIFeedbackPanel } from "@/components/AIFeedbackPanel";
+import { SaveCodeDialog } from "@/components/SaveCodeDialog";
+import { SavedFilesList } from "@/components/SavedFilesList";
 import { executeJavaScript } from "@/utils/codeExecution";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft } from "lucide-react";
-import { Link } from "react-router-dom";
+import { ArrowLeft, LogIn } from "lucide-react";
+import { Link, useNavigate } from "react-router-dom";
+import { useAuth } from "@/hooks/useAuth";
 
 interface ExecutionResult {
   output: string[];
@@ -18,6 +21,9 @@ export default function Editor() {
   const [executionResult, setExecutionResult] = useState<ExecutionResult | null>(null);
   const [isRunning, setIsRunning] = useState(false);
   const [currentCode, setCurrentCode] = useState("");
+  const [refreshSavedFiles, setRefreshSavedFiles] = useState(0);
+  const { user } = useAuth();
+  const navigate = useNavigate();
 
   const handleRunCode = async (code: string) => {
     setCurrentCode(code);
@@ -38,6 +44,14 @@ export default function Editor() {
     }
   };
 
+  const handleSaveSuccess = () => {
+    setRefreshSavedFiles(prev => prev + 1);
+  };
+
+  const handleLoadCode = (code: string, title: string) => {
+    setCurrentCode(code);
+  };
+
   return (
     <div className="min-h-screen bg-background">
       {/* Header */}
@@ -52,19 +66,34 @@ export default function Editor() {
             </Button>
             <div className="h-6 w-px bg-border" />
             <h1 className="text-xl font-semibold text-foreground">EduRun Editor</h1>
+            <div className="ml-auto flex items-center gap-2">
+              <SaveCodeDialog code={currentCode} onSave={handleSaveSuccess} />
+              {!user && (
+                <Button variant="outline" size="sm" asChild>
+                  <Link to="/auth">
+                    <LogIn className="h-4 w-4 mr-2" />
+                    Sign In to Save
+                  </Link>
+                </Button>
+              )}
+            </div>
           </div>
         </div>
       </div>
 
       {/* Editor Layout */}
       <div className="container mx-auto p-4 h-[calc(100vh-80px)]">
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 h-full">
+        <div className="grid grid-cols-1 lg:grid-cols-4 gap-4 h-full">
           {/* Code Editor */}
           <div className="lg:col-span-2">
-            <CodeEditor onRunCode={handleRunCode} />
+            <CodeEditor 
+              onRunCode={handleRunCode} 
+              initialCode={currentCode}
+              onCodeChange={setCurrentCode}
+            />
           </div>
           
-          {/* Right Panel */}
+          {/* Middle Panel - Output and AI Feedback */}
           <div className="flex flex-col gap-4">
             {/* Output Panel */}
             <div className="flex-1">
@@ -73,12 +102,20 @@ export default function Editor() {
             
             {/* AI Feedback Panel */}
             <div className="flex-1">
-            <AIFeedbackPanel 
-              code={currentCode}
-              errors={executionResult?.errors || []}
-              hasExecuted={!!executionResult}
-            />
+              <AIFeedbackPanel 
+                code={currentCode}
+                errors={executionResult?.errors || []}
+                hasExecuted={!!executionResult}
+              />
             </div>
+          </div>
+
+          {/* Right Panel - Saved Files */}
+          <div>
+            <SavedFilesList 
+              onLoadCode={handleLoadCode}
+              refreshTrigger={refreshSavedFiles}
+            />
           </div>
         </div>
       </div>

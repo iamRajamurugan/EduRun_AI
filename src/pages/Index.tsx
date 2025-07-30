@@ -1,9 +1,12 @@
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { Play, Code, Brain, Zap, ArrowRight, CheckCircle } from "lucide-react";
+import { Play, Code, Brain, Zap, ArrowRight, CheckCircle, LogIn, LogOut } from "lucide-react";
 import { Link } from "react-router-dom";
+import { useAuth } from "@/hooks/useAuth";
 
 export default function Index() {
+  const { user, signOut } = useAuth();
+
   return (
     <div className="min-h-screen bg-background">
       {/* Navigation */}
@@ -14,9 +17,26 @@ export default function Index() {
               <Code className="h-6 w-6 text-primary" />
               <h1 className="text-xl font-bold text-foreground">EduRun</h1>
             </div>
-            <Button variant="ghost" size="sm">
-              Sign In
-            </Button>
+            <div className="flex items-center gap-2">
+              {user ? (
+                <>
+                  <span className="text-sm text-muted-foreground">
+                    Welcome back!
+                  </span>
+                  <Button variant="ghost" size="sm" onClick={signOut}>
+                    <LogOut className="h-4 w-4 mr-2" />
+                    Sign Out
+                  </Button>
+                </>
+              ) : (
+                <Button variant="ghost" size="sm" asChild>
+                  <Link to="/auth">
+                    <LogIn className="h-4 w-4 mr-2" />
+                    Sign In
+                  </Link>
+                </Button>
+              )}
+            </div>
           </div>
         </div>
       </nav>
