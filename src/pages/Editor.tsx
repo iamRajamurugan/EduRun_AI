@@ -67,6 +67,10 @@ export default function Editor() {
             <div className="h-6 w-px bg-border" />
             <h1 className="text-xl font-semibold text-foreground">EduRun Editor</h1>
             <div className="ml-auto flex items-center gap-2">
+              <SavedFilesList 
+                onLoadCode={handleLoadCode}
+                refreshTrigger={refreshSavedFiles}
+              />
               <SaveCodeDialog code={currentCode} onSave={handleSaveSuccess} />
               {!user && (
                 <Button variant="outline" size="sm" asChild>
@@ -83,7 +87,7 @@ export default function Editor() {
 
       {/* Editor Layout */}
       <div className="container mx-auto p-4 h-[calc(100vh-80px)]">
-        <div className="grid grid-cols-1 lg:grid-cols-4 gap-4 h-full">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 h-full">
           {/* Code Editor */}
           <div className="lg:col-span-2">
             <CodeEditor 
@@ -93,7 +97,7 @@ export default function Editor() {
             />
           </div>
           
-          {/* Middle Panel - Output and AI Feedback */}
+          {/* Right Panel - Output and AI Feedback */}
           <div className="flex flex-col gap-4">
             {/* Output Panel */}
             <div className="flex-1">
@@ -108,14 +112,6 @@ export default function Editor() {
                 hasExecuted={!!executionResult}
               />
             </div>
-          </div>
-
-          {/* Right Panel - Saved Files */}
-          <div>
-            <SavedFilesList 
-              onLoadCode={handleLoadCode}
-              refreshTrigger={refreshSavedFiles}
-            />
           </div>
         </div>
       </div>

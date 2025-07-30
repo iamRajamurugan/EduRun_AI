@@ -1,10 +1,20 @@
 import { useState, useEffect } from "react";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { 
+  DropdownMenu, 
+  DropdownMenuContent, 
+  DropdownMenuItem, 
+  DropdownMenuTrigger,
+  DropdownMenuSeparator,
+  DropdownMenuLabel 
+} from "@/components/ui/dropdown-menu";
+import { Trash2, FileText, Calendar, FolderOpen } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Trash2, FileCode, Calendar } from "lucide-react";
-import { useToast } from "@/components/ui/use-toast";
+import { useToast } from "@/hooks/use-toast";
+import { format } from "date-fns";
 
 interface SavedCode {
   id: string;
@@ -58,7 +68,7 @@ export function SavedFilesList({ onLoadCode, refreshTrigger }: SavedFilesListPro
     }
   }, [refreshTrigger]);
 
-  const handleDelete = async (id: string) => {
+  const handleDeleteFile = async (id: string) => {
     const { error } = await supabase
       .from("saved_code")
       .delete()
@@ -79,7 +89,7 @@ export function SavedFilesList({ onLoadCode, refreshTrigger }: SavedFilesListPro
     }
   };
 
-  const handleLoad = (file: SavedCode) => {
+  const handleLoadCode = (file: SavedCode) => {
     onLoadCode(file.code, file.title);
     toast({
       title: "Success",
@@ -88,90 +98,75 @@ export function SavedFilesList({ onLoadCode, refreshTrigger }: SavedFilesListPro
   };
 
   if (!user) {
-    return (
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <FileCode className="h-5 w-5" />
-            Saved Files
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <p className="text-muted-foreground text-center py-4">
-            Please sign in to view your saved files
-          </p>
-        </CardContent>
-      </Card>
-    );
-  }
-
-  if (loading) {
-    return (
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <FileCode className="h-5 w-5" />
-            Saved Files
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <p className="text-muted-foreground text-center py-4">Loading...</p>
-        </CardContent>
-      </Card>
-    );
+    return null;
   }
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <FileCode className="h-5 w-5" />
-          Saved Files ({savedFiles.length})
-        </CardTitle>
-      </CardHeader>
-      <CardContent className="space-y-3">
-        {savedFiles.length === 0 ? (
-          <p className="text-muted-foreground text-center py-4">
-            No saved files yet. Save your first code file!
-          </p>
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button variant="outline" size="sm" className="gap-2">
+          <FolderOpen className="h-4 w-4" />
+          Saved Files
+          {savedFiles.length > 0 && (
+            <Badge variant="secondary" className="ml-1 px-1.5 py-0.5 text-xs">
+              {savedFiles.length}
+            </Badge>
+          )}
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end" className="w-80">
+        <DropdownMenuLabel>Saved Code Files</DropdownMenuLabel>
+        <DropdownMenuSeparator />
+        {loading ? (
+          <div className="p-4 text-center text-muted-foreground text-sm">
+            Loading saved files...
+          </div>
+        ) : savedFiles.length === 0 ? (
+          <div className="p-4 text-center text-muted-foreground text-sm">
+            No saved files yet
+          </div>
         ) : (
-          savedFiles.map((file) => (
-            <div
-              key={file.id}
-              className="border border-border rounded-lg p-3 space-y-2"
-            >
-              <div className="flex items-start justify-between">
-                <div className="flex-1 min-w-0">
-                  <h4 className="font-medium truncate">{file.title}</h4>
-                  <div className="flex items-center gap-2 text-sm text-muted-foreground mt-1">
-                    <Calendar className="h-3 w-3" />
-                    <span>
-                      {new Date(file.updated_at).toLocaleDateString()}
-                    </span>
+          <ScrollArea className="max-h-[300px]">
+            {savedFiles.map((file) => (
+              <DropdownMenuItem
+                key={file.id}
+                className="p-0 focus:bg-accent/50"
+              >
+                <div className="w-full p-3 flex items-start justify-between gap-2">
+                  <div 
+                    className="flex-1 min-w-0 cursor-pointer"
+                    onClick={() => handleLoadCode(file)}
+                  >
+                    <h4 className="font-medium text-sm truncate" title={file.title}>
+                      {file.title}
+                    </h4>
+                    <div className="flex items-center gap-2 mt-1">
+                      <Badge variant="outline" className="text-xs px-1.5 py-0.5">
+                        {file.language}
+                      </Badge>
+                      <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                        <Calendar className="h-3 w-3" />
+                        {format(new Date(file.created_at), 'MMM d')}
+                      </div>
+                    </div>
                   </div>
-                </div>
-                <div className="flex gap-1">
                   <Button
                     variant="ghost"
                     size="sm"
-                    onClick={() => handleLoad(file)}
+                    className="p-1 h-auto hover:bg-destructive/10 hover:text-destructive"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleDeleteFile(file.id);
+                    }}
                   >
-                    Load
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => handleDelete(file.id)}
-                    className="text-destructive hover:text-destructive"
-                  >
-                    <Trash2 className="h-4 w-4" />
+                    <Trash2 className="h-3 w-3" />
                   </Button>
                 </div>
-              </div>
-            </div>
-          ))
+              </DropdownMenuItem>
+            ))}
+          </ScrollArea>
         )}
-      </CardContent>
-    </Card>
+      </DropdownMenuContent>
+    </DropdownMenu>
   );
 }
