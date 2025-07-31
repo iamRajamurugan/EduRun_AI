@@ -35,9 +35,10 @@ interface CodeEditorProps {
   onRunCode: (code: string) => void;
   initialCode?: string;
   onCodeChange?: (code: string) => void;
+  hasErrors?: boolean;
 }
 
-export const CodeEditor = ({ onRunCode, initialCode, onCodeChange }: CodeEditorProps) => {
+export const CodeEditor = ({ onRunCode, initialCode, onCodeChange, hasErrors = false }: CodeEditorProps) => {
   const languages: Language[] = [
     {
       id: 'javascript',
@@ -153,16 +154,20 @@ console.log(\`5 + 3 = \${addNumbers(5, 3)}\`);`
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const lineNumbersRef = useRef<HTMLDivElement>(null);
 
-  // Update code when initialCode changes
+  // Update code when initialCode changes (prevent flickering)
   useEffect(() => {
-    if (initialCode !== undefined && initialCode !== code) {
+    if (initialCode !== undefined && initialCode !== code && initialCode.trim() !== "") {
       setCode(initialCode);
     }
   }, [initialCode]);
 
-  // Call onCodeChange when code changes
+  // Call onCodeChange when code changes (debounced to prevent flickering)
   useEffect(() => {
-    onCodeChange?.(code);
+    const timeoutId = setTimeout(() => {
+      onCodeChange?.(code);
+    }, 100);
+    
+    return () => clearTimeout(timeoutId);
   }, [code, onCodeChange]);
 
   const handleLanguageChange = (language: Language) => {
@@ -312,7 +317,11 @@ console.log(\`5 + 3 = \${addNumbers(5, 3)}\`);`
       </div>
 
       {/* Code Input Area with Line Numbers */}
-      <div className="flex-1 flex bg-gradient-to-br from-card/40 via-card/30 to-card/50">
+      <div className={`flex-1 flex transition-all duration-300 ${
+        hasErrors 
+          ? 'bg-gradient-to-br from-destructive/10 via-destructive/5 to-destructive/15 border-destructive/20' 
+          : 'bg-gradient-to-br from-card/40 via-card/30 to-card/50'
+      }`}>
         {/* Line Numbers */}
         <div 
           ref={lineNumbersRef}
@@ -335,15 +344,28 @@ console.log(\`5 + 3 = \${addNumbers(5, 3)}\`);`
             value={code}
             onChange={(e) => setCode(e.target.value)}
             onScroll={handleScroll}
-            className="w-full h-full p-4 pt-4 bg-transparent text-foreground font-mono resize-none border-none outline-none placeholder:text-muted-foreground/50"
+            className={`w-full h-full p-4 pt-4 bg-transparent font-mono resize-none border-none outline-none placeholder:text-muted-foreground/50 transition-colors duration-300 ${
+              hasErrors ? 'text-foreground' : 'text-foreground'
+            }`}
             placeholder="// Start coding here..."
             spellCheck={false}
+            autoComplete="off"
+            autoCorrect="off"
+            autoCapitalize="off"
             style={{
               fontSize: `${fontSize}px`,
               lineHeight: '1.5',
               tabSize: 2,
             }}
           />
+          {hasErrors && (
+            <div className="absolute top-2 right-2">
+              <div className="flex items-center gap-1 px-2 py-1 bg-destructive/20 border border-destructive/30 rounded text-xs text-destructive-foreground">
+                <div className="w-1.5 h-1.5 rounded-full bg-destructive animate-pulse" />
+                Errors detected
+              </div>
+            </div>
+          )}
         </div>
       </div>
 
@@ -357,8 +379,10 @@ console.log(\`5 + 3 = \${addNumbers(5, 3)}\`);`
           <span>{selectedLanguage.name}</span>
           <span>UTF-8</span>
           <div className="flex items-center gap-1">
-            <div className="w-2 h-2 rounded-full bg-success animate-pulse" />
-            <span>Ready</span>
+            <div className={`w-2 h-2 rounded-full animate-pulse ${
+              hasErrors ? 'bg-destructive' : 'bg-success'
+            }`} />
+            <span className={hasErrors ? 'text-destructive' : ''}>{hasErrors ? 'Errors' : 'Ready'}</span>
           </div>
         </div>
       </div>

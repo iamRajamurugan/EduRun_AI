@@ -94,6 +94,7 @@ export default function Editor() {
               onRunCode={handleRunCode} 
               initialCode={currentCode}
               onCodeChange={setCurrentCode}
+              hasErrors={!!(executionResult?.errors && executionResult.errors.length > 0)}
             />
           </div>
           
