@@ -10,10 +10,11 @@ import { useToast } from "@/components/ui/use-toast";
 
 interface SaveCodeDialogProps {
   code: string;
+  language: string;
   onSave?: () => void;
 }
 
-export function SaveCodeDialog({ code, onSave }: SaveCodeDialogProps) {
+export function SaveCodeDialog({ code, language, onSave }: SaveCodeDialogProps) {
   const [title, setTitle] = useState("");
   const [saving, setSaving] = useState(false);
   const [open, setOpen] = useState(false);
@@ -30,7 +31,7 @@ export function SaveCodeDialog({ code, onSave }: SaveCodeDialogProps) {
         user_id: user.id,
         title: title.trim(),
         code: code,
-        language: "javascript"
+        language: language
       });
 
     if (error) {

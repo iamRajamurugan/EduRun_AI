@@ -21,6 +21,7 @@ export default function Editor() {
   const [executionResult, setExecutionResult] = useState<ExecutionResult | null>(null);
   const [isRunning, setIsRunning] = useState(false);
   const [currentCode, setCurrentCode] = useState("");
+  const [currentLanguage, setCurrentLanguage] = useState("javascript");
   const [refreshSavedFiles, setRefreshSavedFiles] = useState(0);
   const { user } = useAuth();
   const navigate = useNavigate();
@@ -71,7 +72,7 @@ export default function Editor() {
                 onLoadCode={handleLoadCode}
                 refreshTrigger={refreshSavedFiles}
               />
-              <SaveCodeDialog code={currentCode} onSave={handleSaveSuccess} />
+              <SaveCodeDialog code={currentCode} language={currentLanguage} onSave={handleSaveSuccess} />
               {!user && (
                 <Button variant="outline" size="sm" asChild>
                   <Link to="/auth">
@@ -94,6 +95,7 @@ export default function Editor() {
               onRunCode={handleRunCode} 
               initialCode={currentCode}
               onCodeChange={setCurrentCode}
+              onLanguageChange={setCurrentLanguage}
               hasErrors={!!(executionResult?.errors && executionResult.errors.length > 0)}
             />
           </div>

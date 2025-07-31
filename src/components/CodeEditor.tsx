@@ -36,9 +36,10 @@ interface CodeEditorProps {
   initialCode?: string;
   onCodeChange?: (code: string) => void;
   hasErrors?: boolean;
+  onLanguageChange?: (language: string) => void;
 }
 
-export const CodeEditor = ({ onRunCode, initialCode, onCodeChange, hasErrors = false }: CodeEditorProps) => {
+export const CodeEditor = ({ onRunCode, initialCode, onCodeChange, hasErrors = false, onLanguageChange }: CodeEditorProps) => {
   const languages: Language[] = [
     {
       id: 'javascript',
@@ -174,6 +175,7 @@ console.log(\`5 + 3 = \${addNumbers(5, 3)}\`);`
     setSelectedLanguage(language);
     setCode(language.template);
     setActiveTab(`main.${language.extension}`);
+    onLanguageChange?.(language.id);
   };
 
   const handleRun = () => {

@@ -20,7 +20,7 @@ interface Suggestion {
 
 const GEMINI_API_KEY = "AIzaSyDEboPrzph5AlS84SQsZNRcGNGsRwHkaGo";
 
-async function getAIFeedback(code: string, errors: string[]): Promise<Suggestion[]> {
+async function getAIFeedback(code: string, errors: string[]): Promise<{ suggestions: Suggestion[], learningContent: string }> {
   try {
     const systemPrompt = `You are an encouraging JavaScript coding mentor. Your goal is to guide students toward solutions without giving them complete answers. 
 
@@ -41,8 +41,14 @@ When analyzing code and errors:
 4. Encourage them to try different approaches
 5. Explain the THINKING PROCESS behind problem-solving
 
-Format your response as a JSON array of suggestions with this structure:
-[{"type": "error-fix" | "improvement" | "learning", "title": "Clear title", "description": "Encouraging guidance without full solution", "codeExample": "Small hint or partial example (not complete solution)"}]
+Format your response as a JSON object with two properties:
+1. "suggestions": Array of 3-5 suggestions, each with:
+   - type: "error-fix" | "improvement" | "learning"
+   - title: "Clear title"
+   - description: "Encouraging guidance without full solution"
+   - codeExample: "Small hint or partial example (not complete solution)"
+
+2. "learningContent": A markdown-formatted learning section with examples and explanations related to the code concepts (max 400 words)
 
 Keep descriptions conversational and supportive. Use "you can try", "consider exploring", "what if you", etc.`;
 
@@ -55,7 +61,7 @@ ${code}
 
 ${errors.length > 0 ? `Errors encountered:\n${errors.join('\n')}` : 'No errors detected.'}
 
-Remember: Guide them toward solutions with hints and questions, don't solve it for them!`;
+Remember: Guide them toward solutions with hints and questions, don't solve it for them! Include both suggestions and learning content.`;
 
     const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp:generateContent?key=${GEMINI_API_KEY}`, {
       method: 'POST',
@@ -85,34 +91,44 @@ Remember: Guide them toward solutions with hints and questions, don't solve it f
     }
 
     // Extract JSON from AI response
-    const jsonMatch = aiResponse.match(/\[[\s\S]*\]/);
+    const jsonMatch = aiResponse.match(/\{[\s\S]*\}/);
     if (jsonMatch) {
-      const suggestions = JSON.parse(jsonMatch[0]);
-      return suggestions.slice(0, 4); // Limit to 4 suggestions
+      const parsed = JSON.parse(jsonMatch[0]);
+      return {
+        suggestions: parsed.suggestions?.slice(0, 4) || [],
+        learningContent: parsed.learningContent || ''
+      };
     }
 
     // Fallback if JSON parsing fails
-    return [{
-      type: "learning",
-      title: "Keep Exploring!",
-      description: "The AI is here to help guide your learning journey. Try running your code and see what happens!",
-      codeExample: "// Remember: Learning comes from trying things out!\nconsole.log('Keep coding!');"
-    }];
+    return {
+      suggestions: [{
+        type: "learning",
+        title: "Keep Exploring!",
+        description: "The AI is here to help guide your learning journey. Try running your code and see what happens!",
+        codeExample: "// Remember: Learning comes from trying things out!\nconsole.log('Keep coding!');"
+      }],
+      learningContent: "Practice makes perfect! Keep experimenting with different code patterns and see what works."
+    };
 
   } catch (error) {
     console.error('AI feedback error:', error);
     // Fallback suggestions
-    return [{
-      type: "learning",
-      title: "AI Assistant Offline",
-      description: "Don't worry! Use this as an opportunity to debug on your own. Look at error messages carefully and try to understand what they're telling you.",
-      codeExample: "// Debugging tip:\nconsole.log('Check your variables:', yourVariable);"
-    }];
+    return {
+      suggestions: [{
+        type: "learning",
+        title: "AI Assistant Offline",
+        description: "Don't worry! Use this as an opportunity to debug on your own. Look at error messages carefully and try to understand what they're telling you.",
+        codeExample: "// Debugging tip:\nconsole.log('Check your variables:', yourVariable);"
+      }],
+      learningContent: "Take this opportunity to practice debugging independently. Read error messages carefully and break your problem into smaller parts."
+    };
   }
 }
 
 export const AIFeedbackPanel = ({ code, errors, hasExecuted }: AIFeedbackProps) => {
   const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
+  const [learningContent, setLearningContent] = useState<string>('');
   const [isAnalyzing, setIsAnalyzing] = useState(false);
 
   useEffect(() => {
@@ -120,8 +136,9 @@ export const AIFeedbackPanel = ({ code, errors, hasExecuted }: AIFeedbackProps) 
       setIsAnalyzing(true);
       
       getAIFeedback(code, errors)
-        .then(aiSuggestions => {
-          setSuggestions(aiSuggestions);
+        .then(({ suggestions, learningContent }) => {
+          setSuggestions(suggestions);
+          setLearningContent(learningContent);
           setIsAnalyzing(false);
         })
         .catch(error => {
@@ -239,69 +256,25 @@ export const AIFeedbackPanel = ({ code, errors, hasExecuted }: AIFeedbackProps) 
           <TabsContent value="learning" className="flex-1 mt-4">
             <Card className="h-full bg-gradient-glass border-border/50 shadow-ai backdrop-blur-sm">
               <div className="p-4 h-full overflow-auto">
-                <div className="space-y-4">
-                  <div className="p-4 bg-ai-accent/10 border border-ai-accent/20 rounded-lg">
-                    <div className="flex items-start gap-3">
-                      <div className="flex-shrink-0 mt-0.5">
-                        <BookOpen className="h-5 w-5 text-ai-accent" />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <h3 className="font-semibold text-foreground mb-2">JavaScript Fundamentals</h3>
-                        <p className="text-sm text-muted-foreground mb-3 leading-relaxed">
-                          Master the basics: variables, functions, and control structures form the foundation of all programming.
-                        </p>
-                        <div className="bg-muted/30 p-3 rounded-md overflow-x-auto">
-                          <pre className="text-xs font-mono text-foreground leading-relaxed">
-{`// Variables store data
-let message = "Hello, World!";
-
-// Functions perform actions
-function greet(name) {
-  return "Hello, " + name;
-}
-
-// Control structures make decisions
-if (message.length > 0) {
-  console.log(greet("Student"));
-}`}
-                          </pre>
-                        </div>
-                      </div>
+                {learningContent ? (
+                  <div className="bg-ai-accent/10 border border-ai-accent/20 rounded-lg p-4">
+                    <h3 className="font-semibold text-foreground mb-3 flex items-center gap-2">
+                      <BookOpen className="h-5 w-5 text-ai-accent" />
+                      AI Learning Guide
+                    </h3>
+                    <div className="prose prose-sm dark:prose-invert max-w-none">
+                      <pre className="whitespace-pre-wrap text-sm text-muted-foreground leading-relaxed">
+                        {learningContent}
+                      </pre>
                     </div>
                   </div>
-
-                  <div className="p-4 bg-success/10 border border-success/20 rounded-lg">
-                    <div className="flex items-start gap-3">
-                      <div className="flex-shrink-0 mt-0.5">
-                        <TrendingUp className="h-5 w-5 text-success" />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <h3 className="font-semibold text-foreground mb-2">Debugging Best Practices</h3>
-                        <p className="text-sm text-muted-foreground mb-3 leading-relaxed">
-                          Learn to read error messages, use console.log strategically, and break problems into smaller parts.
-                        </p>
-                        <ul className="text-sm text-muted-foreground space-y-2">
-                          <li className="flex items-start gap-2">
-                            <span className="text-success mt-1">•</span>
-                            <span>Read error messages carefully - they tell you exactly what's wrong</span>
-                          </li>
-                          <li className="flex items-start gap-2">
-                            <span className="text-success mt-1">•</span>
-                            <span>Use console.log to check variable values</span>
-                          </li>
-                          <li className="flex items-start gap-2">
-                            <span className="text-success mt-1">•</span>
-                            <span>Test small pieces of code one at a time</span>
-                          </li>
-                          <li className="flex items-start gap-2">
-                            <span className="text-success mt-1">•</span>
-                            <span>Check for typos in variable and function names</span>
-                          </li>
-                        </ul>
-                      </div>
-                    </div>
+                ) : (
+                  <div className="text-center text-muted-foreground py-8">
+                    <BookOpen className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                    <p>Learning content will appear here</p>
+                    <p className="text-sm">Run your code to get personalized learning tips</p>
                   </div>
-                </div>
+                )}
               </div>
             </Card>
           </TabsContent>
