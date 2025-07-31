@@ -18,72 +18,116 @@ interface Suggestion {
   codeExample?: string;
 }
 
+const GEMINI_API_KEY = "AIzaSyDEboPrzph5AlS84SQsZNRcGNGsRwHkaGo";
+
+async function getAIFeedback(code: string, errors: string[]): Promise<Suggestion[]> {
+  try {
+    const systemPrompt = `You are an encouraging JavaScript coding mentor. Your goal is to guide students toward solutions without giving them complete answers. 
+
+IMPORTANT GUIDELINES:
+- NEVER provide complete working code solutions
+- Instead, give hints, point out where to look, and suggest what concepts to explore
+- Ask leading questions that help students think through problems
+- Encourage experimentation and learning from mistakes
+- Focus on understanding WHY something works, not just HOW
+- Point students toward the right direction with small nudges
+- Celebrate small victories and progress
+- Make learning feel achievable and fun
+
+When analyzing code and errors:
+1. Point out WHAT TYPE of error it is and WHERE to look
+2. Suggest WHICH concepts they should review or practice
+3. Give small hints about the RIGHT DIRECTION to explore
+4. Encourage them to try different approaches
+5. Explain the THINKING PROCESS behind problem-solving
+
+Format your response as a JSON array of suggestions with this structure:
+[{"type": "error-fix" | "improvement" | "learning", "title": "Clear title", "description": "Encouraging guidance without full solution", "codeExample": "Small hint or partial example (not complete solution)"}]
+
+Keep descriptions conversational and supportive. Use "you can try", "consider exploring", "what if you", etc.`;
+
+    const userPrompt = `Analyze this JavaScript code and any errors. Provide encouraging guidance that helps the student learn, not complete solutions.
+
+Code:
+\`\`\`javascript
+${code}
+\`\`\`
+
+${errors.length > 0 ? `Errors encountered:\n${errors.join('\n')}` : 'No errors detected.'}
+
+Remember: Guide them toward solutions with hints and questions, don't solve it for them!`;
+
+    const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp:generateContent?key=${GEMINI_API_KEY}`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        contents: [{
+          parts: [{
+            text: `${systemPrompt}\n\n${userPrompt}`
+          }]
+        }],
+        generationConfig: {
+          temperature: 0.7,
+          topK: 40,
+          topP: 0.95,
+          maxOutputTokens: 1000,
+        }
+      })
+    });
+
+    const data = await response.json();
+    const aiResponse = data.candidates?.[0]?.content?.parts?.[0]?.text;
+    
+    if (!aiResponse) {
+      throw new Error('No response from AI');
+    }
+
+    // Extract JSON from AI response
+    const jsonMatch = aiResponse.match(/\[[\s\S]*\]/);
+    if (jsonMatch) {
+      const suggestions = JSON.parse(jsonMatch[0]);
+      return suggestions.slice(0, 4); // Limit to 4 suggestions
+    }
+
+    // Fallback if JSON parsing fails
+    return [{
+      type: "learning",
+      title: "Keep Exploring!",
+      description: "The AI is here to help guide your learning journey. Try running your code and see what happens!",
+      codeExample: "// Remember: Learning comes from trying things out!\nconsole.log('Keep coding!');"
+    }];
+
+  } catch (error) {
+    console.error('AI feedback error:', error);
+    // Fallback suggestions
+    return [{
+      type: "learning",
+      title: "AI Assistant Offline",
+      description: "Don't worry! Use this as an opportunity to debug on your own. Look at error messages carefully and try to understand what they're telling you.",
+      codeExample: "// Debugging tip:\nconsole.log('Check your variables:', yourVariable);"
+    }];
+  }
+}
+
 export const AIFeedbackPanel = ({ code, errors, hasExecuted }: AIFeedbackProps) => {
   const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
 
-  // Simulate AI analysis
   useEffect(() => {
     if (hasExecuted) {
       setIsAnalyzing(true);
       
-      // Simulate analysis delay
-      setTimeout(() => {
-        const newSuggestions: Suggestion[] = [];
-
-        // Error-specific suggestions
-        if (errors.length > 0) {
-          errors.forEach(error => {
-            if (error.includes("ReferenceError")) {
-              newSuggestions.push({
-                type: "error-fix",
-                title: "Variable Not Defined",
-                description: "Make sure to declare your variable before using it. Use 'let', 'const', or 'var' to declare variables.",
-                codeExample: "// Correct way:\nlet myVariable = 'Hello';\nconsole.log(myVariable);"
-              });
-            } else if (error.includes("SyntaxError")) {
-              newSuggestions.push({
-                type: "error-fix", 
-                title: "Syntax Error Detected",
-                description: "Check for missing brackets, semicolons, or quotation marks. JavaScript is case-sensitive.",
-                codeExample: "// Check for:\n// - Missing closing brackets }\n// - Missing quotes ' or \"\n// - Typos in keywords"
-              });
-            }
-          });
-        }
-
-        // Code improvement suggestions
-        if (code.includes("var ")) {
-          newSuggestions.push({
-            type: "improvement",
-            title: "Use Modern Variable Declarations",
-            description: "Consider using 'let' or 'const' instead of 'var' for better scope control and modern JavaScript practices.",
-            codeExample: "// Instead of: var name = 'John';\n// Use: const name = 'John';\n// Or: let age = 25;"
-          });
-        }
-
-        if (code.includes("function") && !code.includes("=>")) {
-          newSuggestions.push({
-            type: "learning",
-            title: "Explore Arrow Functions",
-            description: "Arrow functions provide a more concise syntax and have different 'this' binding behavior.",
-            codeExample: "// Traditional function:\nfunction add(a, b) { return a + b; }\n\n// Arrow function:\nconst add = (a, b) => a + b;"
-          });
-        }
-
-        // General learning suggestions
-        if (!hasExecuted || suggestions.length === 0) {
-          newSuggestions.push({
-            type: "learning",
-            title: "Code Structure Tips",
-            description: "Good code structure makes your programs easier to read and debug. Use meaningful variable names and add comments.",
-            codeExample: "// Good practice:\nconst studentName = 'Alice'; // Clear variable name\n// Calculate average grade\nconst average = (grade1 + grade2) / 2;"
-          });
-        }
-
-        setSuggestions(newSuggestions);
-        setIsAnalyzing(false);
-      }, 1500);
+      getAIFeedback(code, errors)
+        .then(aiSuggestions => {
+          setSuggestions(aiSuggestions);
+          setIsAnalyzing(false);
+        })
+        .catch(error => {
+          console.error('Failed to get AI feedback:', error);
+          setIsAnalyzing(false);
+        });
     }
   }, [code, errors, hasExecuted]);
 
