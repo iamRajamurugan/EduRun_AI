@@ -258,28 +258,30 @@ export const AIFeedbackPanel = ({ code, errors, hasExecuted }: AIFeedbackProps) 
                     {suggestions.map((suggestion, index) => (
                       <div 
                         key={index}
-                        className="p-4 bg-card/50 border border-border/50 rounded-lg hover:bg-card/70 transition-all duration-300"
+                        className="p-5 bg-gradient-to-r from-card/40 to-card/60 border border-border/40 rounded-xl hover:from-card/60 hover:to-card/80 transition-all duration-300 shadow-sm hover:shadow-md"
                       >
-                        <div className="flex items-start gap-3">
-                          <div className="flex-shrink-0 mt-0.5">
-                            {getSuggestionIcon(suggestion.type)}
+                        <div className="flex items-start gap-4">
+                          <div className="flex-shrink-0 mt-1">
+                            <div className="p-2 bg-background/80 border border-border/40 rounded-lg">
+                              {getSuggestionIcon(suggestion.type)}
+                            </div>
                           </div>
                           <div className="flex-1 min-w-0">
-                            <div className="flex items-center gap-2 mb-2 flex-wrap">
-                              <h3 className="font-semibold text-foreground">{suggestion.title}</h3>
-                              <div className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold ${
+                            <div className="flex items-center gap-3 mb-3 flex-wrap">
+                              <h3 className="font-semibold text-foreground text-base">{suggestion.title}</h3>
+                              <div className={`inline-flex items-center rounded-full border px-3 py-1 text-xs font-medium ${
                                 suggestion.type === "error-fix" 
-                                  ? "border-transparent bg-destructive text-destructive-foreground" 
+                                  ? "border-destructive/30 bg-destructive/10 text-destructive" 
                                   : suggestion.type === "learning" 
-                                    ? "border-transparent bg-secondary text-secondary-foreground"
-                                    : "border-transparent bg-primary text-primary-foreground"
+                                    ? "border-ai-accent/30 bg-ai-accent/10 text-ai-accent"
+                                    : "border-primary/30 bg-primary/10 text-primary"
                               }`}>
-                                {suggestion.type.replace("-", " ")}
+                                {suggestion.type.replace("-", " ").toUpperCase()}
                               </div>
                             </div>
-                            <p className="text-sm text-muted-foreground mb-3 leading-relaxed">{suggestion.description}</p>
+                            <p className="text-sm text-muted-foreground mb-4 leading-relaxed">{suggestion.description}</p>
                             {suggestion.codeExample && (
-                              <div className="bg-muted/30 p-3 rounded-md border border-border/30 overflow-x-auto">
+                              <div className="bg-muted/40 border border-border/30 p-4 rounded-lg overflow-x-auto">
                                 <pre className="text-xs font-mono text-foreground whitespace-pre-wrap leading-relaxed">
                                   {suggestion.codeExample}
                                 </pre>
@@ -299,15 +301,27 @@ export const AIFeedbackPanel = ({ code, errors, hasExecuted }: AIFeedbackProps) 
             <Card className="h-full bg-gradient-glass border-border/50 shadow-ai backdrop-blur-sm">
               <div className="p-4 h-full overflow-auto">
                 {learningContent ? (
-                  <div className="bg-ai-accent/10 border border-ai-accent/20 rounded-lg p-4">
-                    <h3 className="font-semibold text-foreground mb-3 flex items-center gap-2">
-                      <BookOpen className="h-5 w-5 text-ai-accent" />
+                  <div className="bg-gradient-to-br from-ai-accent/5 to-ai-accent/10 border border-ai-accent/20 rounded-xl p-6 shadow-sm">
+                    <h3 className="font-semibold text-foreground mb-4 flex items-center gap-2">
+                      <div className="p-1.5 bg-ai-accent/20 rounded-lg">
+                        <BookOpen className="h-5 w-5 text-ai-accent" />
+                      </div>
                       AI Learning Guide
                     </h3>
                     <div className="prose prose-sm dark:prose-invert max-w-none">
-                      <pre className="whitespace-pre-wrap text-sm text-muted-foreground leading-relaxed">
-                        {learningContent}
-                      </pre>
+                      <div 
+                        className="text-sm text-foreground leading-relaxed space-y-3"
+                        dangerouslySetInnerHTML={{
+                          __html: learningContent
+                            .replace(/\*\*(.*?)\*\*/g, '<strong class="font-semibold text-foreground">$1</strong>')
+                            .replace(/\*(.*?)\*/g, '<em class="italic">$1</em>')
+                            .replace(/`(.*?)`/g, '<code class="bg-muted px-1.5 py-0.5 rounded text-xs font-mono">$1</code>')
+                            .replace(/```([\s\S]*?)```/g, '<pre class="bg-muted/50 p-3 rounded-lg overflow-x-auto"><code class="text-xs font-mono">$1</code></pre>')
+                            .replace(/\n\n/g, '</p><p class="mt-3">')
+                            .replace(/^/, '<p>')
+                            .replace(/$/, '</p>')
+                        }}
+                      />
                     </div>
                   </div>
                 ) : (
